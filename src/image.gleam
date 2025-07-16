@@ -2,6 +2,7 @@
 
 import color.{type Color}
 import gleam/float
+import gleam/int
 import gleam/list
 import gleam/result
 import gleam/string
@@ -38,6 +39,14 @@ fn point_rotate(p: Point, center: Point, angle: Float) -> Point {
   )
 }
 
+fn point_flip_x(p: Point) -> Point {
+  Point(0.0 -. p.x, p.y)
+}
+
+fn point_flip_y(p: Point) -> Point {
+  Point(p.x, 0.0 -. p.y)
+}
+
 pub opaque type Image {
   Rectangle(
     style: List(Style),
@@ -53,6 +62,7 @@ pub opaque type Image {
     height: Float,
     angle: Float,
   )
+  Polygon(style: List(Style), points: List(Point))
   Combination(Image, Image)
 }
 
@@ -78,12 +88,21 @@ pub fn center(img: Image) -> Point {
 
 fn translate(img: Image, dx: Float, dy: Float) -> Image {
   case img {
-    Rectangle(..) ->
-      Rectangle(..img, center: point_translate(img.center, dx, dy))
-    Ellipse(..) -> Ellipse(..img, center: point_translate(img.center, dx, dy))
-    Combination(a, b) -> {
-      Combination(translate(a, dx, dy), translate(b, dx, dy))
-    }
+    Rectangle(center:, ..) ->
+      Rectangle(..img, center: point_translate(center, dx, dy))
+    Ellipse(center:, ..) ->
+      Ellipse(..img, center: point_translate(center, dx, dy))
+    Polygon(points:, ..) ->
+      Polygon(..img, points: list.map(points, point_translate(_, dx, dy)))
+    Combination(a, b) -> Combination(translate(a, dx, dy), translate(b, dx, dy))
+  }
+}
+
+fn fix_position(img: Image) -> Image {
+  let #(min, _) = box(img)
+  case min == Point(0.0, 0.0) {
+    True -> img
+    False -> translate(img, 0.0 -. min.x, 0.0 -. min.y)
   }
 }
 
@@ -104,6 +123,13 @@ fn box(img: Image) -> #(Point, Point) {
         point_translate(center, 0.0 -. dx, 0.0 -. dy),
         point_translate(center, dx, dy),
       )
+    }
+    Polygon(points:, ..) -> {
+      let min_x = list.fold(points, 0.0, fn(min, p) { float.min(min, p.x) })
+      let min_y = list.fold(points, 0.0, fn(min, p) { float.min(min, p.y) })
+      let max_x = list.fold(points, 0.0, fn(max, p) { float.max(max, p.x) })
+      let max_y = list.fold(points, 0.0, fn(max, p) { float.max(max, p.y) })
+      #(Point(min_x, min_y), Point(max_x, max_y))
     }
     Rectangle(center:, width:, height:, angle:, ..) -> {
       let hw = width /. 2.0
@@ -139,14 +165,53 @@ pub fn circle(radius: Float, style: List(Style)) -> Image {
   ellipse(2.0 *. radius, 2.0 *. radius, style)
 }
 
+pub fn triangle(side: Float, style: List(Style)) -> Image {
+  let side = positive(side)
+  // side *. sqrt(3.0) /. 2.0
+  let height = side *. 0.8660254037844386
+  Polygon(style, [
+    Point(side /. 2.0, 0.0),
+    Point(side, height),
+    Point(0.0, height),
+  ])
+}
+
+pub fn right_triangle(side1: Float, side2: Float, style: List(Style)) -> Image {
+  let side1 = positive(side1)
+  let side2 = positive(side2)
+  Polygon(style, [Point(0.0, 0.0), Point(0.0, side2), Point(side1, side2)])
+}
+
+pub fn regular_polygon(
+  side_length: Float,
+  side_count: Int,
+  style: List(Style),
+) -> Image {
+  let side_count = int.max(1, side_count)
+  let side_countf = int.to_float(side_count)
+  let radius = positive(side_length) /. { 2.0 *. sin_deg(90.0 /. side_countf) }
+  let alpha = case int.is_even(side_count) {
+    True -> -180.0 /. side_countf
+    False -> -90.0
+  }
+
+  list.range(0, side_count - 1)
+  |> list.map(fn(i) {
+    let theta = alpha +. 360.0 *. int.to_float(i) /. side_countf
+    Point(radius *. cos_deg(theta), radius *. sin_deg(theta))
+  })
+  |> Polygon(style, _)
+  |> fix_position
+}
+
 fn positive(n: Float) -> Float {
   float.max(0.0, n)
 }
 
 pub fn rotate(img: Image, angle: Float) -> Image {
-  let img = rotate_around(img, center(img), angle)
-  let #(min, _) = box(img)
-  translate(img, 0.0 -. min.x, 0.0 -. min.y)
+  // the api for the user is counter clockwise, but the implementation is clockwise
+  rotate_around(img, center(img), 0.0 -. angle)
+  |> fix_position
 }
 
 fn rotate_around(img: Image, center: Point, angle: Float) -> Image {
@@ -163,12 +228,59 @@ fn rotate_around(img: Image, center: Point, angle: Float) -> Image {
         center: point_rotate(img.center, center, angle),
         angle: img.angle +. angle,
       )
+    Polygon(..) ->
+      Polygon(
+        ..img,
+        points: list.map(img.points, point_rotate(_, center, angle)),
+      )
     Combination(a, b) ->
       Combination(
         rotate_around(a, center, angle),
         rotate_around(b, center, angle),
       )
   }
+}
+
+pub fn scale(img: Image, factor: Float) -> Image {
+  scale_xy(img, factor, factor)
+}
+
+pub fn scale_xy(img: Image, x_factor: Float, y_factor: Float) -> Image {
+  let x_factor = positive(x_factor)
+  let y_factor = positive(y_factor)
+  case img {
+    Rectangle(width:, height:, ..) ->
+      Rectangle(..img, width: width *. x_factor, height: height *. y_factor)
+    Ellipse(width:, height:, ..) ->
+      Ellipse(..img, width: width *. x_factor, height: height *. y_factor)
+    Polygon(points:, ..) ->
+      Polygon(
+        ..img,
+        points: list.map(points, fn(p) {
+          Point(p.x *. x_factor, p.y *. y_factor)
+        }),
+      )
+    Combination(a, b) ->
+      Combination(
+        scale_xy(a, x_factor, y_factor),
+        scale_xy(b, x_factor, y_factor),
+      )
+  }
+  |> fix_position
+}
+
+pub fn flip_horizontal(img: Image) -> Image {
+  case img {
+    Rectangle(center:, angle:, ..) ->
+      Rectangle(..img, center: point_flip_x(center), angle: 0.0 -. angle)
+    Ellipse(center:, angle:, ..) -> {
+      Ellipse(..img, center: point_flip_x(center), angle: 0.0 -. angle)
+    }
+    Polygon(points:, ..) ->
+      Polygon(..img, points: list.map(points, point_flip_x))
+    Combination(a, b) -> Combination(flip_horizontal(a), flip_horizontal(b))
+  }
+  |> fix_position
 }
 
 pub fn above(a: Image, b: Image) -> Image {
@@ -213,6 +325,19 @@ pub fn beside_bottom(a: Image, b: Image) -> Image {
   Combination(translate(a, 0.0, hm -. ha), translate(b, width(a), hm -. hb))
 }
 
+pub fn overlay(top: Image, bottom: Image) -> Image {
+  let center = center(bottom)
+  Combination(
+    bottom,
+    translate(
+      top,
+      center.x -. width(top) /. 2.0,
+      center.y -. height(top) /. 2.0,
+    ),
+  )
+  |> fix_position
+}
+
 fn mid(a: Float, b: Float) -> Float {
   { a -. b } /. 2.0
 }
@@ -247,6 +372,19 @@ fn to_svg_(img: Image, level: Int) -> String {
       <> attrib("rx", width)
       <> attrib("ry", height)
       <> attribs("transform", rotate_str(angle, center))
+      <> styles_to_svg(style)
+      <> "/>\n"
+    }
+    Polygon(style:, points:) -> {
+      let points =
+        points
+        |> list.map(fn(p) {
+          float.to_string(p.x) <> "," <> float.to_string(p.y)
+        })
+        |> string.join(" ")
+      ident(level)
+      <> "<polygon "
+      <> attribs("points", points)
       <> styles_to_svg(style)
       <> "/>\n"
     }

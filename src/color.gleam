@@ -7,20 +7,28 @@ pub opaque type Color {
 }
 
 pub fn to_svg(color: Color) -> String {
-  let s = int.to_string
   case color {
     None -> "none"
     Rgb(r, g, b, a) ->
       "rgba("
-      <> s(r)
+      <> int.to_string(r)
       <> ", "
-      <> s(g)
+      <> int.to_string(g)
       <> ", "
-      <> s(b)
+      <> int.to_string(b)
       <> ", "
       <> float.to_string(a)
       <> ")"
   }
+}
+
+pub fn rgb(red: Int, green: Int, blue: Int) -> Color {
+  Rgb(
+    int.clamp(red, 0, 255),
+    int.clamp(green, 0, 255),
+    int.clamp(blue, 0, 255),
+    1.0,
+  )
 }
 
 pub const none = None
