@@ -64,6 +64,7 @@ pub opaque type Image {
   )
   Polygon(style: List(Style), points: List(Point))
   Combination(Image, Image)
+  Crop(center: Point, width: Float, height: Float, angle: Float, image: Image)
 }
 
 pub fn width(img: Image) -> Float {
@@ -95,6 +96,12 @@ fn translate(img: Image, dx: Float, dy: Float) -> Image {
     Polygon(points:, ..) ->
       Polygon(..img, points: list.map(points, point_translate(_, dx, dy)))
     Combination(a, b) -> Combination(translate(a, dx, dy), translate(b, dx, dy))
+    Crop(center:, image:, ..) ->
+      Crop(
+        ..img,
+        center: point_translate(center, dx, dy),
+        image: translate(image, dx, dy),
+      )
   }
 }
 
@@ -108,12 +115,15 @@ fn fix_position(img: Image) -> Image {
 
 fn box(img: Image) -> #(Point, Point) {
   case img {
-    Combination(a, b) -> {
-      let #(amin, amax) = box(a)
-      let #(bmin, bmax) = box(b)
+    Rectangle(center:, width:, height:, angle:, ..) -> {
+      let hw = width /. 2.0
+      let hh = height /. 2.0
+      let abs = float.absolute_value
+      let dx = hw *. abs(cos_deg(angle)) +. hh *. abs(sin_deg(angle))
+      let dy = hw *. abs(sin_deg(angle)) +. hh *. abs(cos_deg(angle))
       #(
-        Point(float.min(amin.x, bmin.x), float.min(amin.y, bmin.y)),
-        Point(float.max(amax.x, bmax.x), float.max(amax.y, bmax.y)),
+        point_translate(center, 0.0 -. dx, 0.0 -. dy),
+        point_translate(center, dx, dy),
       )
     }
     Ellipse(center:, width:, height:, angle:, ..) -> {
@@ -124,6 +134,14 @@ fn box(img: Image) -> #(Point, Point) {
         point_translate(center, dx, dy),
       )
     }
+    Combination(a, b) -> {
+      let #(amin, amax) = box(a)
+      let #(bmin, bmax) = box(b)
+      #(
+        Point(float.min(amin.x, bmin.x), float.min(amin.y, bmin.y)),
+        Point(float.max(amax.x, bmax.x), float.max(amax.y, bmax.y)),
+      )
+    }
     Polygon(points:, ..) -> {
       let min_x = list.fold(points, 0.0, fn(min, p) { float.min(min, p.x) })
       let min_y = list.fold(points, 0.0, fn(min, p) { float.min(min, p.y) })
@@ -131,7 +149,7 @@ fn box(img: Image) -> #(Point, Point) {
       let max_y = list.fold(points, 0.0, fn(max, p) { float.max(max, p.y) })
       #(Point(min_x, min_y), Point(max_x, max_y))
     }
-    Rectangle(center:, width:, height:, angle:, ..) -> {
+    Crop(center:, width:, height:, angle:, ..) -> {
       let hw = width /. 2.0
       let hh = height /. 2.0
       let abs = float.absolute_value
@@ -182,13 +200,50 @@ pub fn right_triangle(side1: Float, side2: Float, style: List(Style)) -> Image {
   Polygon(style, [Point(0.0, 0.0), Point(0.0, side2), Point(side1, side2)])
 }
 
+pub fn isosceles_triangle(
+  side_length: Float,
+  angle: Float,
+  style: List(Style),
+) -> Image {
+  let side_length = positive(side_length)
+  let hangle = angle /. 2.0
+  Polygon(style, [
+    Point(side_length *. sin_deg(hangle), side_length *. cos_deg(hangle)),
+    Point(0.0, 0.0),
+    Point(0.0 -. side_length *. sin_deg(hangle), side_length *. cos_deg(hangle)),
+  ])
+  |> fix_position
+}
+
+pub fn rhombus(side_length: Float, angle: Float, style: List(Style)) -> Image {
+  let side_length = positive(side_length)
+  let height = 2.0 *. side_length *. cos_deg(angle /. 2.0)
+  let width = 2.0 *. side_length *. sin_deg(angle /. 2.0)
+  Polygon(style, [
+    Point(0.0, height /. 2.0),
+    Point(width /. 2.0, 0.0),
+    Point(width, height /. 2.0),
+    Point(width /. 2.0, height),
+  ])
+}
+
 pub fn regular_polygon(
   side_length: Float,
   side_count: Int,
   style: List(Style),
 ) -> Image {
+  star_polygon(side_length, side_count, 1, style)
+}
+
+pub fn star_polygon(
+  side_length: Float,
+  side_count: Int,
+  step_count: Int,
+  style: List(Style),
+) -> Image {
   let side_count = int.max(1, side_count)
   let side_countf = int.to_float(side_count)
+  let step_count = int.max(1, step_count)
   let radius = positive(side_length) /. { 2.0 *. sin_deg(90.0 /. side_countf) }
   let alpha = case int.is_even(side_count) {
     True -> -180.0 /. side_countf
@@ -197,8 +252,42 @@ pub fn regular_polygon(
 
   list.range(0, side_count - 1)
   |> list.map(fn(i) {
-    let theta = alpha +. 360.0 *. int.to_float(i) /. side_countf
+    let theta =
+      alpha +. 360.0 *. int.to_float(i * step_count % side_count) /. side_countf
     Point(radius *. cos_deg(theta), radius *. sin_deg(theta))
+  })
+  |> Polygon(style, _)
+  |> fix_position
+}
+
+pub fn star(side_length: Float, style: List(Style)) -> Image {
+  star_polygon(side_length, 5, 2, style)
+}
+
+pub fn radial_start(
+  point_count: Int,
+  inner_radius: Float,
+  outer_radius: Float,
+  style: List(Style),
+) -> Image {
+  let point_count = int.max(2, point_count)
+  let inner_radius = positive(inner_radius)
+  let outer_radius = positive(outer_radius)
+  let alpha = case int.is_even(point_count) {
+    True -> -180.0 /. int.to_float(point_count)
+    False -> -90.0
+  }
+
+  list.range(0, 2 * point_count - 1)
+  |> list.flat_map(fn(i) {
+    let theta1 =
+      alpha +. 360.0 *. int.to_float(i * 2) /. int.to_float(2 * point_count)
+    let theta2 =
+      alpha +. 360.0 *. int.to_float(i * 2 + 1) /. int.to_float(2 * point_count)
+    [
+      Point(outer_radius *. cos_deg(theta1), outer_radius *. sin_deg(theta1)),
+      Point(inner_radius *. cos_deg(theta2), inner_radius *. sin_deg(theta2)),
+    ]
   })
   |> Polygon(style, _)
   |> fix_position
@@ -238,6 +327,13 @@ fn rotate_around(img: Image, center: Point, angle: Float) -> Image {
         rotate_around(a, center, angle),
         rotate_around(b, center, angle),
       )
+    Crop(..) ->
+      Crop(
+        ..img,
+        center: point_rotate(img.center, center, angle),
+        angle: img.angle +. angle,
+        image: rotate_around(img.image, center, angle),
+      )
   }
 }
 
@@ -265,22 +361,47 @@ pub fn scale_xy(img: Image, x_factor: Float, y_factor: Float) -> Image {
         scale_xy(a, x_factor, y_factor),
         scale_xy(b, x_factor, y_factor),
       )
+    Crop(width:, height:, image:, ..) ->
+      Crop(
+        ..img,
+        width: width *. x_factor,
+        height: height *. y_factor,
+        image: scale_xy(image, x_factor, y_factor),
+      )
   }
   |> fix_position
 }
 
 pub fn flip_horizontal(img: Image) -> Image {
+  flip(img, point_flip_x)
+}
+
+pub fn flip_vertical(img: Image) -> Image {
+  flip(img, point_flip_y)
+}
+
+fn flip(img: Image, point_flip: fn(Point) -> Point) -> Image {
   case img {
     Rectangle(center:, angle:, ..) ->
-      Rectangle(..img, center: point_flip_x(center), angle: 0.0 -. angle)
+      Rectangle(..img, center: point_flip(center), angle: 0.0 -. angle)
     Ellipse(center:, angle:, ..) -> {
-      Ellipse(..img, center: point_flip_x(center), angle: 0.0 -. angle)
+      Ellipse(..img, center: point_flip(center), angle: 0.0 -. angle)
     }
-    Polygon(points:, ..) ->
-      Polygon(..img, points: list.map(points, point_flip_x))
-    Combination(a, b) -> Combination(flip_horizontal(a), flip_horizontal(b))
+    Polygon(points:, ..) -> Polygon(..img, points: list.map(points, point_flip))
+    Combination(a, b) -> Combination(flip(a, point_flip), flip(b, point_flip))
+    Crop(center:, angle:, image:, ..) ->
+      Crop(
+        ..img,
+        center: point_flip(center),
+        angle: 0.0 -. angle,
+        image: flip(image, point_flip),
+      )
   }
   |> fix_position
+}
+
+pub fn frame(img: Image) -> Image {
+  overlay(img, rectangle(width(img), height(img), [outline(color.black)]))
 }
 
 pub fn above(a: Image, b: Image) -> Image {
@@ -336,6 +457,22 @@ pub fn overlay(top: Image, bottom: Image) -> Image {
     ),
   )
   |> fix_position
+}
+
+pub fn crop(
+  img: Image,
+  x: Float,
+  y: Float,
+  width: Float,
+  height: Float,
+) -> Image {
+  Crop(
+    Point(width /. 2.0, height /. 2.0),
+    width,
+    height,
+    0.0,
+    translate(img, 0.0 -. x, 0.0 -. y),
+  )
 }
 
 fn mid(a: Float, b: Float) -> Float {
@@ -395,6 +532,32 @@ fn to_svg_(img: Image, level: Int) -> String {
       <> to_svg_(b, level + 1)
       <> ident(level)
       <> "</g>\n"
+    Crop(center:, width:, height:, angle:, image:) -> {
+      let clipid = "clip" <> int.to_string(math.clip_id())
+      let rect =
+        "<rect "
+        <> attrib("x", center.x -. width /. 2.0)
+        <> attrib("y", center.y -. height /. 2.0)
+        <> attrib("width", width)
+        <> attrib("height", height)
+        <> attribs("transform", rotate_str(angle, center))
+        <> "/>"
+      ident(level)
+      <> "<defs>"
+      <> "<clipPath "
+      <> attribs("id", clipid)
+      <> ">"
+      <> rect
+      <> "</clipPath>"
+      <> "</defs>\n"
+      <> ident(level)
+      <> "<g "
+      <> attribs("clip-path", "url(#" <> clipid <> ")")
+      <> ">\n"
+      <> to_svg_(image, level + 1)
+      <> ident(level)
+      <> "</g>\n"
+    }
   }
 }
 

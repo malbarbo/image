@@ -53,7 +53,7 @@ pub const blanchedalmond = Rgb(255, 235, 205, 1.0)
 
 pub const blue = Rgb(0, 0, 255, 1.0)
 
-pub const bluevioconst = Rgb(138, 43, 226, 1.0)
+pub const blueviolet = Rgb(138, 43, 226, 1.0)
 
 pub const brown = Rgb(165, 42, 42, 1.0)
 
@@ -111,7 +111,7 @@ pub const darkslategrey = Rgb(47, 79, 79, 1.0)
 
 pub const darkturquoise = Rgb(0, 206, 209, 1.0)
 
-pub const darkvioconst = Rgb(148, 0, 211, 1.0)
+pub const darkviolet = Rgb(148, 0, 211, 1.0)
 
 pub const deeppink = Rgb(255, 20, 147, 1.0)
 
@@ -223,7 +223,7 @@ pub const mediumspringgreen = Rgb(0, 250, 154, 1.0)
 
 pub const mediumturquoise = Rgb(72, 209, 204, 1.0)
 
-pub const mediumvioconstred = Rgb(199, 21, 133, 1.0)
+pub const mediumvioletred = Rgb(199, 21, 133, 1.0)
 
 pub const midnightblue = Rgb(25, 25, 112, 1.0)
 
@@ -253,9 +253,9 @@ pub const palegoldenrod = Rgb(238, 232, 170, 1.0)
 
 pub const palegreen = Rgb(152, 251, 152, 1.0)
 
-pub const paconsturquoise = Rgb(175, 238, 238, 1.0)
+pub const paleturquoise = Rgb(175, 238, 238, 1.0)
 
-pub const palevioconstred = Rgb(219, 112, 147, 1.0)
+pub const palevioletred = Rgb(219, 112, 147, 1.0)
 
 pub const papayawhip = Rgb(255, 239, 213, 1.0)
 
@@ -315,7 +315,7 @@ pub const tomato = Rgb(255, 99, 71, 1.0)
 
 pub const turquoise = Rgb(64, 224, 208, 1.0)
 
-pub const vioconst = Rgb(238, 130, 238, 1.0)
+pub const violet = Rgb(238, 130, 238, 1.0)
 
 pub const wheat = Rgb(245, 222, 179, 1.0)
 
