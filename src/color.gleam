@@ -31,6 +31,15 @@ pub fn rgb(red: Int, green: Int, blue: Int) -> Color {
   )
 }
 
+pub fn rgba(red: Int, green: Int, blue: Int, alpha: Float) -> Color {
+  Rgb(
+    int.clamp(red, 0, 255),
+    int.clamp(green, 0, 255),
+    int.clamp(blue, 0, 255),
+    float.clamp(alpha, 0.0, 1.0),
+  )
+}
+
 pub const none = None
 
 pub const aliceblue = Rgb(240, 248, 255, 1.0)
