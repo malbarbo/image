@@ -1,4 +1,5 @@
 import color.{type Color}
+import gleam/bool
 import gleam/float
 import gleam/int
 import gleam/list
@@ -6,6 +7,7 @@ import gleam/result
 import gleam/string
 import math.{cos_deg, hypot, sin_deg}
 
+// FIXME: adjuste figure with outline only (https://docs.racket-lang.org/teachpack/2htdpimage-guide.html#%28part._nitty-gritty%29)
 // TODO: add constants for dash
 // TODO: rename outline to stroke?
 // TODO: wedge
@@ -13,21 +15,8 @@ import math.{cos_deg, hypot, sin_deg}
 // TODO: all text functions
 // TODO: triangle/sa...
 // TODO: pulled_regular_polygon
-// TODO: scene+...
-// TODO: overlay_align
-// TODO: overlay_align_offset
-// TODO: underlay_align
-// TODO: underlay_align_offset
-// TODO: beside_align
-// TODO: above_align
-// TODO: empty_scene
-// TODO: place_image
-// TODO: place_image_align
 // TODO: place_images
 // TODO: place_images_align
-// TODO: put_image
-// TODO: crop_align
-// TODO: color_frame
 // TODO: bitmap...
 // TODO: freeze
 // TODO: create pen?
@@ -121,6 +110,54 @@ fn point_flip_y(p: Point) -> Point {
 }
 
 // **************************
+// * Align
+// **************************
+
+pub type XPlace {
+  Left
+  Center
+  Right
+}
+
+pub type YPlace {
+  Top
+  Middle
+  Bottom
+}
+
+fn x_place_dx(x_place: XPlace, wa: Float, wb: Float) -> #(Float, Float) {
+  case x_place {
+    Left -> #(0.0, 0.0)
+    Center -> {
+      let wm = float.max(wa, wb)
+      #(mid(wm, wa), mid(wm, wb))
+    }
+    Right -> {
+      let wm = float.max(wa, wb)
+      #(wm -. wa, wm -. wb)
+    }
+  }
+}
+
+fn y_place_dy(y_place: YPlace, ha: Float, hb: Float) -> #(Float, Float) {
+  case y_place {
+    Top -> #(0.0, 0.0)
+    Middle -> {
+      let hm = float.max(ha, hb)
+      #(mid(hm, ha), mid(hm, hb))
+    }
+    Bottom -> {
+      let hm = float.max(ha, hb)
+      #(hm -. ha, hm -. hb)
+    }
+  }
+}
+
+fn mid(a: Float, b: Float) -> Float {
+  { a -. b } /. 2.0
+}
+
+// **************************
 // * Image
 // **************************
 
@@ -167,6 +204,7 @@ pub fn center(img: Image) -> Point {
 }
 
 fn translate(img: Image, dx: Float, dy: Float) -> Image {
+  use <- bool.guard(dx == 0.0 && dy == 0.0, img)
   case img {
     Rectangle(center:, ..) ->
       Rectangle(..img, center: point_translate(center, dx, dy))
@@ -356,7 +394,7 @@ pub fn star_polygon(
   let side_count = int.max(1, side_count)
   let side_countf = int.to_float(side_count)
   let step_count = int.max(1, step_count)
-  let radius = positive(side_length) /. { 2.0 *. sin_deg(90.0 /. side_countf) }
+  let radius = positive(side_length) /. { 2.0 *. sin_deg(180.0 /. side_countf) }
   let alpha = case int.is_even(side_count) {
     True -> -180.0 /. side_countf
     False -> -90.0
@@ -517,7 +555,11 @@ fn flip(img: Image, point_flip: fn(Point) -> Point) -> Image {
 }
 
 pub fn frame(img: Image) -> Image {
-  overlay(img, rectangle(width(img), height(img), [outline(color.black)]))
+  color_frame(img, color.black)
+}
+
+pub fn color_frame(img: Image, color: Color) -> Image {
+  overlay(img, rectangle(width(img), height(img), [outline(color)]))
 }
 
 pub fn crop(
@@ -538,6 +580,20 @@ pub fn crop(
   )
 }
 
+pub fn crop_align(
+  img: Image,
+  x_place: XPlace,
+  y_place: YPlace,
+  crop_width: Float,
+  crop_height: Float,
+) -> Image {
+  let crop_width = positive(crop_width)
+  let crop_height = positive(crop_height)
+  let #(_, dx) = x_place_dx(x_place, width(img), crop_width)
+  let #(_, dy) = y_place_dy(y_place, height(img), crop_height)
+  crop(img, dx, dy, crop_width, crop_height)
+}
+
 // **************************
 // * Overlaying
 // **************************
@@ -547,62 +603,52 @@ pub fn combine(images: List(Image), op: fn(Image, Image) -> Image) -> Image {
 }
 
 pub fn above(a: Image, b: Image) -> Image {
-  let wa = width(a)
-  let wb = width(b)
-  let wm = float.max(wa, wb)
-  Combination(
-    translate(a, mid(wm, wa), 0.0),
-    translate(b, mid(wm, wb), height(a)),
-  )
+  above_align(Center, a, b)
 }
 
-pub fn above_left(a: Image, b: Image) -> Image {
-  Combination(translate(a, 0.0, 0.0), translate(b, 0.0, height(a)))
-}
-
-pub fn above_right(a: Image, b: Image) -> Image {
-  let wa = width(a)
-  let wb = width(b)
-  let wm = float.max(wa, wb)
-  Combination(translate(a, wm -. wa, 0.0), translate(b, wm -. wb, height(a)))
+pub fn above_align(x_place: XPlace, a: Image, b: Image) -> Image {
+  let #(dxa, dxb) = x_place_dx(x_place, width(a), width(b))
+  Combination(translate(a, dxa, 0.0), translate(b, dxb, height(a)))
 }
 
 pub fn beside(a: Image, b: Image) -> Image {
-  let ha = height(a)
-  let hb = height(b)
-  let hm = float.max(ha, hb)
-  Combination(
-    translate(a, 0.0, mid(hm, ha)),
-    translate(b, width(a), mid(hm, hb)),
-  )
+  beside_align(Middle, a, b)
 }
 
-pub fn beside_top(a: Image, b: Image) -> Image {
-  Combination(a, translate(b, width(a), 0.0))
-}
-
-pub fn beside_bottom(a: Image, b: Image) -> Image {
-  let ha = height(a)
-  let hb = height(b)
-  let hm = float.max(ha, hb)
-  Combination(translate(a, 0.0, hm -. ha), translate(b, width(a), hm -. hb))
+pub fn beside_align(y_place: YPlace, a: Image, b: Image) -> Image {
+  let #(dya, dyb) = y_place_dy(y_place, height(a), height(b))
+  Combination(translate(a, 0.0, dya), translate(b, width(a), dyb))
 }
 
 pub fn overlay(top: Image, bottom: Image) -> Image {
-  let center = center(bottom)
-  Combination(
-    bottom,
-    translate(
-      top,
-      center.x -. width(top) /. 2.0,
-      center.y -. height(top) /. 2.0,
-    ),
-  )
+  overlay_align(Center, Middle, top, bottom)
+}
+
+pub fn overlay_align(
+  x_place: XPlace,
+  y_place: YPlace,
+  top: Image,
+  bottom: Image,
+) -> Image {
+  let #(dxa, dxb) = x_place_dx(x_place, width(top), width(bottom))
+  let #(dya, dyb) = y_place_dy(y_place, height(top), height(bottom))
+  Combination(translate(bottom, dxb, dyb), translate(top, dxa, dya))
   |> fix_position
 }
 
 pub fn overlay_offset(top: Image, x: Float, y: Float, bottom: Image) -> Image {
   overlay(top, translate(bottom, x, y))
+}
+
+pub fn overlay_align_offset(
+  x_place: XPlace,
+  y_place: YPlace,
+  top: Image,
+  x: Float,
+  y: Float,
+  bottom: Image,
+) -> Image {
+  overlay_align(x_place, y_place, top, translate(bottom, x, y))
 }
 
 pub fn overlay_xy(top: Image, x: Float, y: Float, bottom: Image) -> Image {
@@ -614,8 +660,28 @@ pub fn underlay(bottom: Image, top: Image) -> Image {
   overlay(top, bottom)
 }
 
+pub fn underlay_align(
+  x_place: XPlace,
+  y_place: YPlace,
+  bottom: Image,
+  top: Image,
+) -> Image {
+  overlay_align(x_place, y_place, top, bottom)
+}
+
 pub fn underlay_offset(bottom: Image, x: Float, y: Float, top: Image) -> Image {
   overlay(translate(top, x, y), bottom)
+}
+
+pub fn underlay_align_offset(
+  x_place: XPlace,
+  y_place: YPlace,
+  bottom: Image,
+  x: Float,
+  y: Float,
+  top: Image,
+) -> Image {
+  underlay_align(x_place, y_place, bottom, translate(top, x, y))
 }
 
 pub fn underlay_xy(bottom: Image, x: Float, y: Float, top: Image) -> Image {
@@ -623,9 +689,75 @@ pub fn underlay_xy(bottom: Image, x: Float, y: Float, top: Image) -> Image {
   |> fix_position
 }
 
-fn mid(a: Float, b: Float) -> Float {
-  { a -. b } /. 2.0
+// **************************
+// * Placing
+// **************************
+
+pub fn empty_scene(width: Float, height: Float) -> Image {
+  empty_scene_color(width, height, color.black)
 }
+
+pub fn empty_scene_color(width: Float, height: Float, color: Color) -> Image {
+  rectangle(width, height, [outline(color)])
+}
+
+pub fn place_image(scene: Image, x: Float, y: Float, img: Image) -> Image {
+  place_image_align(scene, x, y, Center, Middle, img)
+}
+
+pub fn place_image_align(
+  scene: Image,
+  x: Float,
+  y: Float,
+  x_place: XPlace,
+  y_place: YPlace,
+  img: Image,
+) -> Image {
+  let dx = case x_place {
+    Center -> width(img) /. -2.0
+    Left -> 0.0
+    Right -> 0.0 -. width(img)
+  }
+  let dy = case y_place {
+    Bottom -> 0.0 -. height(img)
+    Middle -> height(img) /. -2.0
+    Top -> 0.0
+  }
+  Combination(scene, translate(img, x +. dx, y +. dy))
+  |> crop(0.0, 0.0, width(scene), height(scene))
+  |> fix_position
+}
+
+pub fn place_line(
+  scene: Image,
+  x1: Float,
+  y1: Float,
+  x2: Float,
+  y2: Float,
+  style: List(Style),
+) -> Image {
+  Combination(scene, Polygon(style, [Point(x1, y1), Point(x2, y2)]))
+  |> crop(0.0, 0.0, width(scene), height(scene))
+  |> fix_position
+}
+
+pub fn place_polygon(
+  scene: Image,
+  points: List(Point),
+  style: List(Style),
+) -> Image {
+  Combination(scene, Polygon(style, points))
+  |> crop(0.0, 0.0, width(scene), height(scene))
+  |> fix_position
+}
+
+pub fn put_image(scene: Image, x: Float, y: Float, img: Image) -> Image {
+  place_image(scene, x, height(scene) -. y, img)
+}
+
+// **************************
+// * SVG
+// **************************
 
 pub fn to_svg(img: Image) -> String {
   "<svg "
