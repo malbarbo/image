@@ -1,9 +1,9 @@
-import color
+import fill
 import gleam/io
-import image.{circle, fill, to_svg}
+import image.{circle, to_svg}
 
 pub fn main() {
-  circle(20.0, [fill(color.blue)])
+  circle(20.0, fill.blue)
   |> to_svg
   |> io.println
 }

@@ -1,9 +1,9 @@
-import color
+import fill
 import gleam/io
-import image.{ellipse, fill, frame, to_svg}
+import image.{ellipse, frame, to_svg}
 
 pub fn main() {
-  ellipse(40.0, 40.0, [fill(color.gray)])
+  ellipse(40.0, 40.0, fill.gray)
   |> frame
   |> to_svg
   |> io.println

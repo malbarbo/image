@@ -3,9 +3,9 @@ import gleam/bool
 import gleam/float
 import gleam/int
 import gleam/list
-import gleam/result
 import gleam/string
 import math.{cos_deg, hypot, sin_deg}
+import style.{type Style}
 
 // FIXME: adjuste figure with outline only (https://docs.racket-lang.org/teachpack/2htdpimage-guide.html#%28part._nitty-gritty%29)
 // TODO: add constants for dash
@@ -21,62 +21,6 @@ import math.{cos_deg, hypot, sin_deg}
 // TODO: create pen?
 // TODO: equality test
 // TODO: pin holes...
-
-// **************************
-// * Style
-// **************************
-
-pub opaque type Style {
-  Fill(Color)
-  FillOpacity(Float)
-  FillRule(String)
-  Stroke(Color)
-  StokeLineCap(String)
-  StokeLineJoin(String)
-  StrokeWidth(Float)
-  StrokeOpacity(Float)
-  StrokeDashArray(List(Int))
-}
-
-pub const stroke_linecap_butt = StokeLineCap("butt")
-
-pub const stroke_linecap_round = StokeLineCap("round")
-
-pub const stroke_linecap_square = StokeLineCap("square")
-
-pub const stroke_linejoin_bevel = StokeLineJoin("bevel")
-
-pub const stroke_linejoin_miter = StokeLineJoin("miter")
-
-pub const stroke_linejoin_round = StokeLineJoin("round")
-
-pub const fill_rule_nonzero = FillRule("nonzero")
-
-pub const fill_rule_evenodd = FillRule("evenodd")
-
-pub fn fill(c: Color) -> Style {
-  Fill(c)
-}
-
-pub fn fill_opacity(opacity: Float) -> Style {
-  FillOpacity(float.clamp(opacity, 0.0, 1.0))
-}
-
-pub fn stroke(c: Color) -> Style {
-  Stroke(c)
-}
-
-pub fn stroke_width(width: Float) -> Style {
-  StrokeWidth(positive(width))
-}
-
-pub fn stroke_opacity(opacity: Float) -> Style {
-  StrokeOpacity(float.clamp(opacity, 0.0, 1.0))
-}
-
-pub fn stoke_dash_array(values: List(Int)) -> Style {
-  StrokeDashArray(list.map(values, int.max(0, _)))
-}
 
 // **************************
 // * Point
@@ -162,25 +106,25 @@ fn mid(a: Float, b: Float) -> Float {
 
 pub opaque type Image {
   Rectangle(
-    style: List(Style),
+    style: Style,
     center: Point,
     width: Float,
     height: Float,
     angle: Float,
   )
   Ellipse(
-    style: List(Style),
+    style: Style,
     center: Point,
     width: Float,
     height: Float,
     angle: Float,
   )
-  Polygon(style: List(Style), points: List(Point))
+  Polygon(style: Style, points: List(Point))
   Combination(Image, Image)
   Crop(center: Point, width: Float, height: Float, angle: Float, image: Image)
 }
 
-pub const empty = Rectangle([], Point(0.0, 0.0), 0.0, 0.0, 0.0)
+pub const empty = Rectangle(style.none, Point(0.0, 0.0), 0.0, 0.0, 0.0)
 
 pub fn width(img: Image) -> Float {
   let #(min, max) = box(img)
@@ -283,27 +227,27 @@ fn box(img: Image) -> #(Point, Point) {
 // * Basic images
 // **************************
 
-pub fn rectangle(width: Float, height: Float, style: List(Style)) -> Image {
+pub fn rectangle(width: Float, height: Float, style: Style) -> Image {
   let width = positive(width)
   let height = positive(height)
   Rectangle(style, Point(width /. 2.0, height /. 2.0), width, height, 0.0)
 }
 
-pub fn square(side: Float, style: List(Style)) -> Image {
+pub fn square(side: Float, style: Style) -> Image {
   rectangle(side, side, style)
 }
 
-pub fn ellipse(width: Float, height: Float, style: List(Style)) -> Image {
+pub fn ellipse(width: Float, height: Float, style: Style) -> Image {
   let hw = positive(width) /. 2.0
   let hh = positive(height) /. 2.0
   Ellipse(style, Point(hw, hh), hw, hh, 0.0)
 }
 
-pub fn circle(radius: Float, style: List(Style)) -> Image {
+pub fn circle(radius: Float, style: Style) -> Image {
   ellipse(2.0 *. radius, 2.0 *. radius, style)
 }
 
-pub fn line(x: Float, y: Float, style: List(Style)) -> Image {
+pub fn line(x: Float, y: Float, style: Style) -> Image {
   Polygon(style, [Point(0.0, 0.0), Point(x, y)])
   |> fix_position
 }
@@ -314,7 +258,7 @@ pub fn add_line(
   y1: Float,
   x2: Float,
   y2: Float,
-  style: List(Style),
+  style: Style,
 ) -> Image {
   Combination(img, Polygon(style, [Point(x1, y1), Point(x2, y2)]))
   |> fix_position
@@ -324,7 +268,7 @@ pub fn add_line(
 // * Polygons
 // **************************
 
-pub fn triangle(side: Float, style: List(Style)) -> Image {
+pub fn triangle(side: Float, style: Style) -> Image {
   let side = positive(side)
   // side *. sqrt(3.0) /. 2.0
   let height = side *. 0.8660254037844386
@@ -335,7 +279,7 @@ pub fn triangle(side: Float, style: List(Style)) -> Image {
   ])
 }
 
-pub fn right_triangle(side1: Float, side2: Float, style: List(Style)) -> Image {
+pub fn right_triangle(side1: Float, side2: Float, style: Style) -> Image {
   let side1 = positive(side1)
   let side2 = positive(side2)
   Polygon(style, [Point(0.0, 0.0), Point(0.0, side2), Point(side1, side2)])
@@ -344,7 +288,7 @@ pub fn right_triangle(side1: Float, side2: Float, style: List(Style)) -> Image {
 pub fn isosceles_triangle(
   side_length: Float,
   angle: Float,
-  style: List(Style),
+  style: Style,
 ) -> Image {
   let side_length = positive(side_length)
   let hangle = angle /. 2.0
@@ -356,7 +300,7 @@ pub fn isosceles_triangle(
   |> fix_position
 }
 
-pub fn rhombus(side_length: Float, angle: Float, style: List(Style)) -> Image {
+pub fn rhombus(side_length: Float, angle: Float, style: Style) -> Image {
   let side_length = positive(side_length)
   let height = 2.0 *. side_length *. cos_deg(angle /. 2.0)
   let width = 2.0 *. side_length *. sin_deg(angle /. 2.0)
@@ -371,16 +315,16 @@ pub fn rhombus(side_length: Float, angle: Float, style: List(Style)) -> Image {
 pub fn regular_polygon(
   side_length: Float,
   side_count: Int,
-  style: List(Style),
+  style: Style,
 ) -> Image {
   star_polygon(side_length, side_count, 1, style)
 }
 
-pub fn polygon(points: List(Point), style: List(Style)) -> Image {
+pub fn polygon(points: List(Point), style: Style) -> Image {
   Polygon(style, points) |> fix_position
 }
 
-pub fn add_polygon(img: Image, points: List(Point), style: List(Style)) -> Image {
+pub fn add_polygon(img: Image, points: List(Point), style: Style) -> Image {
   Combination(img, Polygon(style, points)) |> fix_position
 }
 
@@ -388,7 +332,7 @@ pub fn star_polygon(
   side_length: Float,
   side_count: Int,
   step_count: Int,
-  style: List(Style),
+  style: Style,
 ) -> Image {
   let side_count = int.max(1, side_count)
   let side_countf = int.to_float(side_count)
@@ -409,7 +353,7 @@ pub fn star_polygon(
   |> fix_position
 }
 
-pub fn star(side_length: Float, style: List(Style)) -> Image {
+pub fn star(side_length: Float, style: Style) -> Image {
   star_polygon(side_length, 5, 2, style)
 }
 
@@ -417,7 +361,7 @@ pub fn radial_start(
   point_count: Int,
   inner_radius: Float,
   outer_radius: Float,
-  style: List(Style),
+  style: Style,
 ) -> Image {
   let point_count = int.max(2, point_count)
   let inner_radius = positive(inner_radius)
@@ -558,7 +502,7 @@ pub fn frame(img: Image) -> Image {
 }
 
 pub fn color_frame(img: Image, color: Color) -> Image {
-  overlay(img, rectangle(width(img), height(img), [stroke(color)]))
+  overlay(img, rectangle(width(img), height(img), style.stroke(color)))
 }
 
 pub fn crop(
@@ -697,7 +641,7 @@ pub fn empty_scene(width: Float, height: Float) -> Image {
 }
 
 pub fn empty_scene_color(width: Float, height: Float, color: Color) -> Image {
-  rectangle(width, height, [stroke(color)])
+  rectangle(width, height, style.stroke(color))
 }
 
 pub fn place_image(scene: Image, x: Float, y: Float, img: Image) -> Image {
@@ -733,18 +677,14 @@ pub fn place_line(
   y1: Float,
   x2: Float,
   y2: Float,
-  style: List(Style),
+  style: Style,
 ) -> Image {
   Combination(scene, Polygon(style, [Point(x1, y1), Point(x2, y2)]))
   |> crop(0.0, 0.0, width(scene), height(scene))
   |> fix_position
 }
 
-pub fn place_polygon(
-  scene: Image,
-  points: List(Point),
-  style: List(Style),
-) -> Image {
+pub fn place_polygon(scene: Image, points: List(Point), style: Style) -> Image {
   Combination(scene, Polygon(style, points))
   |> crop(0.0, 0.0, width(scene), height(scene))
   |> fix_position
@@ -777,7 +717,7 @@ fn to_svg_(img: Image, level: Int) -> String {
       <> attrib("width", width)
       <> attrib("height", height)
       <> attribs("transform", rotate_str(angle, center))
-      <> styles_to_svg(style)
+      <> style.to_svg(style)
       <> "/>\n"
     }
     Ellipse(style:, center:, width:, height:, angle:) -> {
@@ -788,7 +728,7 @@ fn to_svg_(img: Image, level: Int) -> String {
       <> attrib("rx", width)
       <> attrib("ry", height)
       <> attribs("transform", rotate_str(angle, center))
-      <> styles_to_svg(style)
+      <> style.to_svg(style)
       <> "/>\n"
     }
     Polygon(style:, points: [p1, p2]) -> {
@@ -798,7 +738,7 @@ fn to_svg_(img: Image, level: Int) -> String {
       <> attrib("y1", p1.y)
       <> attrib("x2", p2.x)
       <> attrib("y2", p2.y)
-      <> styles_to_svg(style)
+      <> style.to_svg(style)
       <> "/>\n"
     }
     Polygon(style:, points:) -> {
@@ -811,7 +751,7 @@ fn to_svg_(img: Image, level: Int) -> String {
       ident(level)
       <> "<polygon "
       <> attribs("points", points)
-      <> styles_to_svg(style)
+      <> style.to_svg(style)
       <> "/>\n"
     }
     Combination(a, b) ->
@@ -870,53 +810,4 @@ fn attrib(name: String, value: Float) -> String {
 
 fn attribs(name: String, value: String) -> String {
   name <> "=\"" <> value <> "\" "
-}
-
-fn styles_to_svg(styles: List(Style)) -> String {
-  case has_outline(styles) && !has_fill(styles) {
-    False -> styles
-    True -> [fill(color.none), ..styles]
-  }
-  |> list.map(style_to_svg)
-  |> string.join("")
-}
-
-fn has_fill(styles: List(Style)) -> Bool {
-  styles
-  |> list.find(fn(s) {
-    case s {
-      Fill(_) -> True
-      _ -> False
-    }
-  })
-  |> result.is_ok
-}
-
-fn has_outline(styles: List(Style)) -> Bool {
-  styles
-  |> list.find(fn(s) {
-    case s {
-      Stroke(_) -> True
-      _ -> False
-    }
-  })
-  |> result.is_ok
-}
-
-fn style_to_svg(style: Style) -> String {
-  case style {
-    Fill(c) -> attribs("fill", color.to_svg(c))
-    FillOpacity(v) -> attrib("fill-opacity", v)
-    FillRule(v) -> attribs("fill-rule", v)
-    Stroke(c) -> attribs("stroke", color.to_svg(c))
-    StokeLineCap(s) -> attribs("stroke-linecap", s)
-    StokeLineJoin(s) -> attribs("stroke-linejoin", s)
-    StrokeDashArray(values) ->
-      attribs(
-        "stroke-dasharray",
-        values |> list.map(int.to_string) |> string.join(", "),
-      )
-    StrokeOpacity(v) -> attrib("stroke-opacity", v)
-    StrokeWidth(v) -> attrib("stroke-width", v)
-  }
 }

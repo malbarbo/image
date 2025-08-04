@@ -1,9 +1,9 @@
-import color
 import gleam/io
-import image.{line, stroke, to_svg}
+import image.{line, to_svg}
+import stroke
 
 pub fn main() {
-  line(-30.0, 20.0, [stroke(color.red)])
+  line(-30.0, 20.0, stroke.red)
   |> to_svg
   |> io.println
 }

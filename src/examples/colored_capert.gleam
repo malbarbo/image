@@ -1,6 +1,7 @@
 import color
+import fill
 import gleam/io
-import image.{above, beside, combine, fill, square, to_svg}
+import image.{above, beside, combine, square, to_svg}
 
 pub fn main() {
   [
@@ -19,10 +20,10 @@ pub fn main() {
 fn colored_carpet(colors) {
   case colors {
     [] -> image.empty
-    [color] -> square(1.0, [fill(color)])
+    [color] -> square(1.0, fill.with(color))
     [first, ..rest] -> {
       let c = colored_carpet(rest)
-      let i = square(image.width(c), [fill(first)])
+      let i = square(image.width(c), fill.with(first))
       combine(
         [
           combine([c, c, c], beside),

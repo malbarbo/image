@@ -1,6 +1,6 @@
-import color
+import fill
 import gleam/io
-import image.{Bottom, beside_align, fill, rotate, square, to_svg}
+import image.{Bottom, beside_align, rotate, square, to_svg}
 
 pub fn main() {
   koch_curve(5)
@@ -10,7 +10,7 @@ pub fn main() {
 
 fn koch_curve(n) {
   case n <= 0 {
-    True -> square(1.0, [fill(color.black)])
+    True -> square(1.0, fill.black)
     False -> {
       let smaller = koch_curve(n - 1)
       smaller

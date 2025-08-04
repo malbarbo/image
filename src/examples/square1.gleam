@@ -1,9 +1,9 @@
-import color
+import fill
 import gleam/io
-import image.{fill, square, to_svg}
+import image.{square, to_svg}
 
 pub fn main() {
-  square(40.0, [fill(color.slateblue)])
+  square(40.0, fill.slateblue)
   |> to_svg
   |> io.println
 }

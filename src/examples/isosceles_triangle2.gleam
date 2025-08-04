@@ -1,9 +1,9 @@
-import color
+import fill
 import gleam/io
-import image.{fill, isosceles_triangle, to_svg}
+import image.{isosceles_triangle, to_svg}
 
 pub fn main() {
-  isosceles_triangle(60.0, 30.0, [fill(color.aquamarine)])
+  isosceles_triangle(60.0, 30.0, fill.aquamarine)
   |> to_svg
   |> io.println
 }

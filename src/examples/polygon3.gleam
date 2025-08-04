@@ -1,6 +1,6 @@
-import color
+import fill
 import gleam/io
-import image.{Point, fill, polygon, to_svg}
+import image.{Point, polygon, to_svg}
 
 pub fn main() {
   polygon(
@@ -14,7 +14,7 @@ pub fn main() {
       Point(20.0, 20.0),
       Point(20.0, 0.0),
     ],
-    [fill(color.plum)],
+    fill.plum,
   )
   |> to_svg
   |> io.println

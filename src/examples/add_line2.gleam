@@ -1,10 +1,11 @@
-import color
+import fill
 import gleam/io
-import image.{add_line, fill, rectangle, stroke, to_svg}
+import image.{add_line, rectangle, to_svg}
+import stroke
 
 pub fn main() {
-  rectangle(40.0, 40.0, [fill(color.gray)])
-  |> add_line(-10.0, 50.0, 50.0, -10.0, [stroke(color.maroon)])
+  rectangle(40.0, 40.0, fill.gray)
+  |> add_line(-10.0, 50.0, 50.0, -10.0, stroke.maroon)
   |> to_svg
   |> io.println
 }

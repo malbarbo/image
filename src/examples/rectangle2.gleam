@@ -1,9 +1,9 @@
-import color
+import fill
 import gleam/io
-import image.{fill, rectangle, to_svg}
+import image.{rectangle, to_svg}
 
 pub fn main() {
-  rectangle(20.0, 40.0, [fill(color.black)])
+  rectangle(20.0, 40.0, fill.black)
   |> to_svg
   |> io.println
 }

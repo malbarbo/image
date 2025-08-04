@@ -1,12 +1,12 @@
-import color
+import fill
 import gleam/io
-import image.{above, ellipse, fill, to_svg}
+import image.{above, ellipse, to_svg}
 
 pub fn main() {
-  ellipse(70.0, 20.0, [fill(color.lightgray)])
-  |> above(ellipse(50.0, 20.0, [fill(color.darkgray)]))
-  |> above(ellipse(30.0, 20.0, [fill(color.dimgray)]))
-  |> above(ellipse(10.0, 20.0, [fill(color.black)]))
+  ellipse(70.0, 20.0, fill.lightgray)
+  |> above(ellipse(50.0, 20.0, fill.darkgray))
+  |> above(ellipse(30.0, 20.0, fill.dimgray))
+  |> above(ellipse(10.0, 20.0, fill.black))
   |> to_svg
   |> io.println
 }
