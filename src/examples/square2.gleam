@@ -1,9 +1,9 @@
 import color
 import gleam/io
-import image.{outline, square, to_svg}
+import image.{square, stroke, to_svg}
 
 pub fn main() {
-  square(50.0, [outline(color.darkmagenta)])
+  square(50.0, [stroke(color.darkmagenta)])
   |> to_svg
   |> io.println
 }

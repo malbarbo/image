@@ -1,6 +1,6 @@
 import color
 import gleam/io
-import image.{Point, add_polygon, fill, outline, square, to_svg}
+import image.{Point, add_polygon, fill, square, stroke, to_svg}
 
 pub fn main() {
   square(180.0, [fill(color.yellow)])
@@ -13,7 +13,7 @@ pub fn main() {
       Point(89.0, 68.0),
       Point(122.0, 72.0),
     ],
-    [outline(color.darkblue)],
+    [stroke(color.darkblue)],
   )
   |> to_svg
   |> io.println

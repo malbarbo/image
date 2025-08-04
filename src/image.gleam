@@ -9,7 +9,6 @@ import math.{cos_deg, hypot, sin_deg}
 
 // FIXME: adjuste figure with outline only (https://docs.racket-lang.org/teachpack/2htdpimage-guide.html#%28part._nitty-gritty%29)
 // TODO: add constants for dash
-// TODO: rename outline to stroke?
 // TODO: wedge
 // TODO: all curve funtions
 // TODO: all text functions
@@ -31,7 +30,7 @@ pub opaque type Style {
   Fill(Color)
   FillOpacity(Float)
   FillRule(String)
-  Outline(Color)
+  Stroke(Color)
   StokeLineCap(String)
   StokeLineJoin(String)
   StrokeWidth(Float)
@@ -63,8 +62,8 @@ pub fn fill_opacity(opacity: Float) -> Style {
   FillOpacity(float.clamp(opacity, 0.0, 1.0))
 }
 
-pub fn outline(c: Color) -> Style {
-  Outline(c)
+pub fn stroke(c: Color) -> Style {
+  Stroke(c)
 }
 
 pub fn stroke_width(width: Float) -> Style {
@@ -559,7 +558,7 @@ pub fn frame(img: Image) -> Image {
 }
 
 pub fn color_frame(img: Image, color: Color) -> Image {
-  overlay(img, rectangle(width(img), height(img), [outline(color)]))
+  overlay(img, rectangle(width(img), height(img), [stroke(color)]))
 }
 
 pub fn crop(
@@ -698,7 +697,7 @@ pub fn empty_scene(width: Float, height: Float) -> Image {
 }
 
 pub fn empty_scene_color(width: Float, height: Float, color: Color) -> Image {
-  rectangle(width, height, [outline(color)])
+  rectangle(width, height, [stroke(color)])
 }
 
 pub fn place_image(scene: Image, x: Float, y: Float, img: Image) -> Image {
@@ -897,7 +896,7 @@ fn has_outline(styles: List(Style)) -> Bool {
   styles
   |> list.find(fn(s) {
     case s {
-      Outline(_) -> True
+      Stroke(_) -> True
       _ -> False
     }
   })
@@ -909,7 +908,7 @@ fn style_to_svg(style: Style) -> String {
     Fill(c) -> attribs("fill", color.to_svg(c))
     FillOpacity(v) -> attrib("fill-opacity", v)
     FillRule(v) -> attribs("fill-rule", v)
-    Outline(c) -> attribs("stroke", color.to_svg(c))
+    Stroke(c) -> attribs("stroke", color.to_svg(c))
     StokeLineCap(s) -> attribs("stroke-linecap", s)
     StokeLineJoin(s) -> attribs("stroke-linejoin", s)
     StrokeDashArray(values) ->

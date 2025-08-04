@@ -1,9 +1,9 @@
 import color
 import gleam/io
-import image.{outline, rectangle, to_svg}
+import image.{rectangle, stroke, to_svg}
 
 pub fn main() {
-  rectangle(40.0, 20.0, [outline(color.black)])
+  rectangle(40.0, 20.0, [stroke(color.black)])
   |> to_svg
   |> io.println
 }

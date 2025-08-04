@@ -1,13 +1,13 @@
 import color
 import gleam/io
 import image.{
-  Center, Middle, beside, circle, combine, fill, outline, place_image_align,
-  rectangle, to_svg,
+  Center, Middle, beside, circle, combine, fill, place_image_align, rectangle,
+  stroke, to_svg,
 }
 
 pub fn main() {
   [
-    rectangle(32.0, 32.0, [outline(color.black)])
+    rectangle(32.0, 32.0, [stroke(color.black)])
       |> place_image_align(
         0.0,
         0.0,
@@ -15,7 +15,7 @@ pub fn main() {
         Middle,
         circle(8.0, [fill(color.tomato)]),
       ),
-    rectangle(32.0, 32.0, [outline(color.black)])
+    rectangle(32.0, 32.0, [stroke(color.black)])
       |> place_image_align(
         8.0,
         8.0,
@@ -23,7 +23,7 @@ pub fn main() {
         Middle,
         circle(8.0, [fill(color.tomato)]),
       ),
-    rectangle(32.0, 32.0, [outline(color.black)])
+    rectangle(32.0, 32.0, [stroke(color.black)])
       |> place_image_align(
         16.0,
         16.0,
@@ -31,7 +31,7 @@ pub fn main() {
         Middle,
         circle(8.0, [fill(color.tomato)]),
       ),
-    rectangle(32.0, 32.0, [outline(color.black)])
+    rectangle(32.0, 32.0, [stroke(color.black)])
       |> place_image_align(
         24.0,
         24.0,
@@ -39,7 +39,7 @@ pub fn main() {
         Middle,
         circle(8.0, [fill(color.tomato)]),
       ),
-    rectangle(32.0, 32.0, [outline(color.black)])
+    rectangle(32.0, 32.0, [stroke(color.black)])
       |> place_image_align(
         32.0,
         32.0,
